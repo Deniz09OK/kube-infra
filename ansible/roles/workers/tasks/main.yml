@@ -1,0 +1,9 @@
+---
+- name: Verifier si le noeud est deja joint au cluster
+  stat:
+    path: /etc/kubernetes/kubelet.conf
+  register: kubelet_conf
+
+- name: Joindre le noeud au cluster Kubernetes
+  command: "{{ hostvars[groups['control_plane'][0]]['node_join_command'] }}"
+  when: not kubelet_conf.stat.exists
