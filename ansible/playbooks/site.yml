@@ -1,0 +1,18 @@
+---
+- hosts: k8s_cluster
+  become: yes
+  gather_facts: yes
+  roles:
+    - prerequisites
+    - containerd
+    - kubernetes
+
+- hosts: control_plane
+  become: yes
+  roles:
+    - control-plane
+
+- hosts: workers
+  become: yes
+  roles:
+    - workers
