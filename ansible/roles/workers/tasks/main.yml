@@ -6,6 +6,6 @@
 
 - name: Joindre le nœud au cluster Kubernetes
   ansible.builtin.command:
-    cmd: "{{ hostvars[groups['control_plane'][0]]['node_join_command'] }}"
+    cmd: "{{ hostvars[groups['control_plane'][0]]['control_plane_node_join_command'] }}"
     creates: /etc/kubernetes/kubelet.conf
   when: not workers_kubelet_conf.stat.exists
