@@ -1,18 +1,29 @@
 ---
-- hosts: k8s_cluster
-  become: yes
-  gather_facts: yes
+- name: Prérequis système pour Kubernetes
+  hosts: k8s_cluster
+  become: true
+  gather_facts: true
   roles:
     - prerequisites
+
+- name: Installation de containerd et Kubernetes
+  hosts: k8s_cluster
+  become: true
+  gather_facts: false
+  roles:
     - containerd
     - kubernetes
 
-- hosts: control_plane
-  become: yes
+- name: Initialisation du control plane
+  hosts: control_plane
+  become: true
+  gather_facts: false
   roles:
     - control-plane
 
-- hosts: workers
-  become: yes
+- name: Rattachement des workers au cluster
+  hosts: workers
+  become: true
+  gather_facts: false
   roles:
     - workers

@@ -1,33 +1,34 @@
 ---
-- name: Creer le repertoire keyring pour Kubernetes
-  file:
+- name: Créer le répertoire keyring pour Kubernetes
+  ansible.builtin.file:
     path: /etc/apt/keyrings
     state: directory
-    mode: '0755'
+    mode: "0755"
 
-- name: Telecharger la cle GPG du depot Kubernetes (v1.30+)
-  shell: |
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.30/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-    chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-  creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+- name: Télécharger la clé GPG du dépôt Kubernetes
+  ansible.builtin.shell:
+    cmd: set -o pipefail && curl -fsSL "https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key" | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    executable: /bin/bash
 
-- name: Ajouter le depot APT Kubernetes
-  copy:
+- name: Ajouter le dépôt APT Kubernetes
+  ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/kubernetes.list
+    mode: "0644"
     content: |
-      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.30/deb/ /
+      deb [arch={{ kube_os_arch }} signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /
 
 - name: Installer kubelet, kubeadm et kubectl
-  apt:
+  ansible.builtin.apt:
     name:
       - kubelet
       - kubeadm
       - kubectl
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Maintenir les versions des packages Kubernetes (apt-mark hold)
-  dpkg_selections:
+  ansible.builtin.dpkg_selections:
     name: "{{ item }}"
     selection: hold
   loop:
