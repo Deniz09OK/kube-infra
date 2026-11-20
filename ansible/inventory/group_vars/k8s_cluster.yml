@@ -1,0 +1,11 @@
+---
+ansible_connection: ssh
+kube_version: "1.37"
+kube_os_arch: amd64
+kube_os_distro: ubuntu
+# IP privee VPC stable de kube-1 (facts), resolvable par tous les noeuds
+kube_control_plane_endpoint: "{{ hostvars[groups['control_plane'][0]].ansible_default_ipv4.address }}"
+pod_network_cidr: 192.168.0.0/16
+calico_manifest_url: https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/calico.yaml
+containerd_pause_image: registry.k8s.io/pause:3.10.1
+kube_control_plane_allow_workloads: true

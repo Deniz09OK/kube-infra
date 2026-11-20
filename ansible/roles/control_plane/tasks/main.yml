@@ -1,0 +1,80 @@
+---
+- name: Récupérer l'IP publique du control plane via IMDSv2 (vide si absente)
+  ansible.builtin.shell:
+    cmd: >-
+      set -o pipefail &&
+      TOKEN=$(curl -fsS --max-time 3 -X PUT http://169.254.169.254/latest/api/token
+      -H "X-aws-ec2-metadata-token-ttl-seconds: 60") &&
+      curl -fsS --max-time 3 -H "X-aws-ec2-metadata-token: $TOKEN"
+      http://169.254.169.254/latest/meta-data/public-ipv4
+    executable: /bin/bash
+  register: control_plane_public_ip
+  changed_when: false
+  failed_when: false
+  check_mode: false
+
+- name: Construire la liste des SAN du certificat de l'API
+  ansible.builtin.set_fact:
+    control_plane_cert_sans: >-
+      {{ ([ansible_host, kube_control_plane_endpoint, control_plane_public_ip.stdout | default('')]
+      + (kube_apiserver_cert_extra_sans | default('') | string).split(','))
+      | map('trim') | reject('equalto', '') | unique | join(',') }}
+
+- name: Initialiser le control plane avec kubeadm
+  ansible.builtin.command:
+    cmd: >-
+      kubeadm init
+      --pod-network-cidr={{ pod_network_cidr }}
+      --control-plane-endpoint="{{ kube_control_plane_endpoint }}"
+      --apiserver-cert-extra-sans="{{ control_plane_cert_sans }}"
+      --upload-certs
+    creates: /etc/kubernetes/admin.conf
+  register: control_plane_kubeadm_init
+
+- name: Créer le répertoire .kube pour l'utilisateur courant
+  ansible.builtin.file:
+    path: "/home/{{ ansible_user }}/.kube"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0755"
+
+- name: Copier l'admin.conf vers le répertoire .kube de l'utilisateur
+  ansible.builtin.copy:
+    src: /etc/kubernetes/admin.conf
+    dest: "/home/{{ ansible_user }}/.kube/config"
+    remote_src: true
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: "0600"
+
+- name: Déployer le plugin CNI Calico
+  become: false
+  ansible.builtin.command:
+    cmd: >-
+      kubectl --kubeconfig=/home/{{ ansible_user }}/.kube/config
+      apply -f {{ calico_manifest_url }}
+  register: control_plane_calico_deploy
+  changed_when: "'created' in control_plane_calico_deploy.stdout or 'configured' in control_plane_calico_deploy.stdout"
+
+- name: Autoriser les workloads sur le nœud control plane si activé
+  become: false
+  ansible.builtin.command:
+    cmd: >-
+      kubectl --kubeconfig=/home/{{ ansible_user }}/.kube/config
+      taint nodes {{ ansible_nodename | lower }} node-role.kubernetes.io/control-plane-
+  register: control_plane_taint_removal
+  failed_when: control_plane_taint_removal.rc != 0 and 'not found' not in control_plane_taint_removal.stderr
+  changed_when: control_plane_taint_removal.rc == 0
+  when: kube_control_plane_allow_workloads | bool
+
+- name: Générer la commande de raccordement (join) pour les workers
+  ansible.builtin.command:
+    cmd: kubeadm token create --print-join-command
+  register: control_plane_kubeadm_join_cmd
+  changed_when: false
+
+- name: Stocker la commande join dans une variable globale
+  ansible.builtin.set_fact:
+    cacheable: true
+    control_plane_node_join_command: "{{ control_plane_kubeadm_join_cmd.stdout }}"
