@@ -4,8 +4,8 @@
     cmd: >-
       kubeadm init
       --pod-network-cidr={{ pod_network_cidr }}
-      --control-plane-endpoint="{{ ansible_host }}"
-      --apiserver-cert-extra-sans="{{ ([ansible_host] + (kube_apiserver_cert_extra_sans | default('') | string).split(',') | map('trim') | reject('equalto', '')) | unique | join(',') }}"
+      --control-plane-endpoint="{{ kube_control_plane_endpoint }}"
+      --apiserver-cert-extra-sans="{{ ([ansible_host, kube_control_plane_endpoint] + (kube_apiserver_cert_extra_sans | default('') | string).split(',') | map('trim') | reject('equalto', '')) | unique | join(',') }}"
       --upload-certs
     creates: /etc/kubernetes/admin.conf
   register: kubeadm_init
@@ -30,9 +30,22 @@
 - name: Déployer le plugin CNI Calico
   become: false
   ansible.builtin.command:
-    cmd: "kubectl --kubeconfig=/home/{{ ansible_user }}/.kube/config apply -f {{ calico_manifest_url }}"
+    cmd: >-
+      kubectl --kubeconfig=/home/{{ ansible_user }}/.kube/config
+      apply -f {{ calico_manifest_url }}
   register: calico_deploy
-  changed_when: "'created' in calico_deploy.stdout or 'configured' in calico_deploy.stdout"
+  changed_when: "'created' in calico_deploy.stdout or 'configured' in calico_deploy.stdout or 'unchanged' in calico_deploy.stdout"
+
+- name: Autoriser les workloads sur le nœud control plane si activé
+  become: false
+  ansible.builtin.command:
+    cmd: >-
+      kubectl --kubeconfig=/home/{{ ansible_user }}/.kube/config
+      taint nodes {{ inventory_hostname }} node-role.kubernetes.io/control-plane-
+  register: taint_removal
+  failed_when: false
+  changed_when: taint_removal.rc == 0
+  when: kube_control_plane_allow_workloads | bool
 
 - name: Générer la commande de raccordement (join) pour les workers
   ansible.builtin.command:

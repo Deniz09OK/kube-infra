@@ -2,10 +2,10 @@
 - name: Vérifier si le nœud est déjà joint au cluster
   ansible.builtin.stat:
     path: /etc/kubernetes/kubelet.conf
-  register: kubelet_conf
+  register: workers_kubelet_conf
 
 - name: Joindre le nœud au cluster Kubernetes
   ansible.builtin.command:
     cmd: "{{ hostvars[groups['control_plane'][0]]['node_join_command'] }}"
     creates: /etc/kubernetes/kubelet.conf
-  when: not kubelet_conf.stat.exists
+  when: not workers_kubelet_conf.stat.exists

@@ -47,6 +47,8 @@ spec:
     - group: ""
       kind: ConfigMap
     - group: ""
+      kind: PersistentVolumeClaim
+    - group: ""
       kind: Secret
     - group: ""
       kind: Service
@@ -58,6 +60,12 @@ spec:
       kind: StatefulSet
     - group: "autoscaling"
       kind: HorizontalPodAutoscaler
+    - group: "batch"
+      kind: CronJob
+    - group: "batch"
+      kind: Job
+    - group: "bitnami.com"
+      kind: SealedSecret
     - group: "networking.k8s.io"
       kind: Ingress
     - group: "networking.k8s.io"

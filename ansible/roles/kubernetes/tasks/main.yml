@@ -7,7 +7,11 @@
 
 - name: Télécharger la clé GPG du dépôt Kubernetes
   ansible.builtin.shell:
-    cmd: set -o pipefail && curl -fsSL "https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key" | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg && chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+    cmd: >-
+      set -o pipefail &&
+      curl -fsSL "https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/Release.key" |
+      gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg &&
+      chmod a+r /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
     executable: /bin/bash
 
@@ -15,8 +19,9 @@
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/kubernetes.list
     mode: "0644"
-    content: |
-      deb [arch={{ kube_os_arch }} signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /
+    content: >-
+      deb [arch={{ kube_os_arch }} signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg]
+      https://pkgs.k8s.io/core:/stable:/v{{ kube_version }}/deb/ /
 
 - name: Installer kubelet, kubeadm et kubectl
   ansible.builtin.apt:

@@ -37,7 +37,7 @@ spec:
   source:
     repoURL: "https://github.com/Deniz09OK/kube-app.git"
     targetRevision: HEAD
-    path: manifests
+    path: helm
   destination:
     server: "https://kubernetes.default.svc"
     namespace: kube-app

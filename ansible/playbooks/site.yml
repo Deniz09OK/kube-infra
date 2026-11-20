@@ -19,7 +19,7 @@
   become: true
   gather_facts: false
   roles:
-    - control-plane
+    - control_plane
 
 - name: Rattachement des workers au cluster
   hosts: workers
