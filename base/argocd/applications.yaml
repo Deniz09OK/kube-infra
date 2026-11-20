@@ -1,0 +1,50 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-infra
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kube-infra
+    app.kubernetes.io/part-of: argocd
+spec:
+  project: kube-infra
+  source:
+    repoURL: "https://github.com/Deniz09OK/kube-infra.git"
+    targetRevision: HEAD
+    path: base
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: argocd
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kube-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kube-app
+    app.kubernetes.io/part-of: argocd
+spec:
+  project: kube-app
+  source:
+    repoURL: "https://github.com/Deniz09OK/kube-app.git"
+    targetRevision: HEAD
+    path: manifests
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: kube-app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
+      - ServerSideApply=true

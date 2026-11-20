@@ -1,0 +1,66 @@
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: kube-infra
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kube-infra
+    app.kubernetes.io/part-of: argocd
+spec:
+  description: Plateforme et infrastructure Kubernetes (SecurePods)
+  sourceRepos:
+    - "https://github.com/Deniz09OK/kube-infra.git"
+    - "git@github.com:Deniz09OK/kube-infra.git"
+  destinations:
+    - namespace: "*"
+      server: "https://kubernetes.default.svc"
+  clusterResourceWhitelist:
+    - group: "*"
+      kind: "*"
+  namespaceResourceWhitelist:
+    - group: "*"
+      kind: "*"
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: kube-app
+  namespace: argocd
+  labels:
+    app.kubernetes.io/name: kube-app
+    app.kubernetes.io/part-of: argocd
+spec:
+  description: Application metier Kubernetes (SecurePods)
+  sourceRepos:
+    - "https://github.com/Deniz09OK/kube-app.git"
+    - "git@github.com:Deniz09OK/kube-app.git"
+  destinations:
+    - namespace: "kube-app"
+      server: "https://kubernetes.default.svc"
+    - namespace: "kube-app-staging"
+      server: "https://kubernetes.default.svc"
+    - namespace: "kube-app-prod"
+      server: "https://kubernetes.default.svc"
+  clusterResourceWhitelist: []
+  namespaceResourceWhitelist:
+    - group: ""
+      kind: ConfigMap
+    - group: ""
+      kind: Secret
+    - group: ""
+      kind: Service
+    - group: ""
+      kind: ServiceAccount
+    - group: "apps"
+      kind: Deployment
+    - group: "apps"
+      kind: StatefulSet
+    - group: "autoscaling"
+      kind: HorizontalPodAutoscaler
+    - group: "networking.k8s.io"
+      kind: Ingress
+    - group: "networking.k8s.io"
+      kind: NetworkPolicy
+    - group: "policy"
+      kind: PodDisruptionBudget

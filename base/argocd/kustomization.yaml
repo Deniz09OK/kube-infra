@@ -1,0 +1,18 @@
+# Version amont Argo CD : v3.5.6
+# Reference distante officielle : https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.6/manifests/install.yaml
+# Les patches locaux (patch-resources.yaml) ajustent les requests/limits sans stocker de secret en clair.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: argocd
+resources:
+  - namespace.yaml
+  - install.yaml
+  - appproject.yaml
+  - applications.yaml
+patches:
+  - path: patch-resources.yaml
+    target:
+      group: apps
+      version: v1
+      kind: Deployment
+      name: "argocd-.*"
