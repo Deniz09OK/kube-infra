@@ -1,0 +1,19 @@
+# Traefik — Ingress Controller du cluster (SEC-19)
+# Chart officiel : https://traefik.github.io/charts (traefik 42.4.1 -> Traefik v3.7.19)
+# Rendu par kustomize (helmCharts) : necessite `kustomize.buildOptions: --enable-helm`
+# dans argocd-cm (cf. base/argocd/patch-argocd-cm.yaml).
+# Rendu local : kubectl kustomize --enable-helm base/traefik  (helm doit etre dans le PATH)
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: traefik
+resources:
+  - namespace.yaml
+  - middleware-redirect-https.yaml
+helmCharts:
+  - name: traefik
+    repo: https://traefik.github.io/charts
+    version: 42.4.1
+    releaseName: traefik
+    namespace: traefik
+    includeCRDs: true
+    valuesFile: values.yaml
