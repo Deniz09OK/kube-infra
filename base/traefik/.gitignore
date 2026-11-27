@@ -1,0 +1,2 @@
+# Chart telecharge par `kustomize build --enable-helm` lors d'un rendu local
+charts/

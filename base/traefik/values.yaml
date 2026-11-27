@@ -1,0 +1,137 @@
+# Values du chart traefik/traefik 42.4.1 — reference : https://github.com/traefik/traefik-helm-chart
+#
+# Contraintes du lab :
+#   - pas de LoadBalancer cloud, une seule IP publique stable portee par kube-1
+#   - ports restreints depuis Internet : le Security Group du lab (kubequest2-group-26-sg)
+#     n'ouvre que 80/443, pas la plage NodePort 30000-32767
+# Choix :
+#   - Service en NodePort (30080/30443) pour l'acces intra-VPC / debug
+#   - pod epingle sur kube-1 (control plane) avec hostPort 80/443 pour que
+#     `curl http://<IP publique kube-1>` atteigne Traefik sans port exotique
+#     (et que Let's Encrypt puisse valider en HTTP-01 sur le port 80)
+
+# Label app.kubernetes.io/instance=traefik (sinon "traefik-traefik" : release + namespace)
+instanceLabelOverride: traefik
+
+commonLabels:
+  app.kubernetes.io/part-of: traefik
+  app.kubernetes.io/component: ingress-controller
+
+deployment:
+  kind: Deployment
+  # 1 seul replica : le hostPort 80/443 ne peut etre tenu que par un pod sur kube-1
+  replicas: 1
+  revisionHistoryLimit: 3
+
+# Avec un hostPort sur un seul noeud, le nouveau pod ne peut pas demarrer tant que
+# l'ancien tient le port : on remplace (maxSurge 0) au lieu de surcharger.
+updateStrategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxUnavailable: 1
+    maxSurge: 0
+
+nodeSelector:
+  node-role.kubernetes.io/control-plane: ""
+tolerations:
+  - key: node-role.kubernetes.io/control-plane
+    operator: Exists
+    effect: NoSchedule
+
+ingressClass:
+  enabled: true
+  isDefaultClass: true
+  name: traefik
+
+# Dashboard actif mais NON expose : uniquement via
+#   kubectl -n traefik port-forward deploy/traefik 8080:8080  ->  http://localhost:8080/dashboard/
+api:
+  dashboard: true
+ingressRoute:
+  dashboard:
+    enabled: false
+  healthcheck:
+    enabled: false
+
+providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: false
+    # Nommage legacy explicite (supprime le warning) : garde le format de reference
+    # <namespace>-<nom>@kubernetescrd utilise dans les annotations des Ingress.
+    safeNaming: false
+  kubernetesIngress:
+    enabled: true
+  kubernetesGateway:
+    enabled: false
+
+global:
+  checkNewVersion: false
+  sendAnonymousUsage: false
+
+log:
+  level: INFO
+  format: json
+
+ports:
+  # Entrypoint interne (ping, dashboard, API) : jamais expose hors du pod
+  traefik:
+    expose:
+      default: false
+  web:
+    port: 8000
+    hostPort: 80
+    exposedPort: 80
+    nodePort: 30080
+    expose:
+      default: true
+    # Redirection HTTP -> HTTPS globale, a activer apres cert-manager (SEC HTTPS).
+    # allowACMEByPass laisse passer les challenges HTTP-01 de Let's Encrypt.
+    # Tant que c'est commente, `curl http://<IP kube-1>` renvoie la 404 Traefik attendue.
+    # allowACMEByPass: true
+    # http:
+    #   redirections:
+    #     entryPoint:
+    #       to: websecure
+    #       scheme: https
+    #       permanent: true
+  websecure:
+    port: 8443
+    hostPort: 443
+    exposedPort: 443
+    nodePort: 30443
+    expose:
+      default: true
+    http:
+      tls:
+        enabled: true
+  metrics:
+    expose:
+      default: false
+
+service:
+  enabled: true
+  spec:
+    type: NodePort
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 256Mi
+
+# Valeurs par defaut du chart conservees (non-root 65532, rootfs en lecture seule,
+# capabilities ALL droppees, seccomp RuntimeDefault) — rappelees ici pour la lisibilite.
+securityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop: [ALL]
+  readOnlyRootFilesystem: true
+podSecurityContext:
+  runAsGroup: 65532
+  runAsNonRoot: true
+  runAsUser: 65532
+  seccompProfile:
+    type: RuntimeDefault

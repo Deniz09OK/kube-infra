@@ -1,0 +1,9 @@
+# Autorise le rendu des charts Helm declares dans les kustomization.yaml (helmCharts),
+# utilise par base/traefik (SEC-19) et les futurs composants installes par chart officiel.
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: argocd-cm
+data:
+  kustomize.buildOptions: --enable-helm
